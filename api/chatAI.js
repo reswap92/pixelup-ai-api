@@ -111,14 +111,14 @@
   const chatEl = $('chat'); 
   const inp = $('inp');
 
-  // Endpoint su Vercel
+  // Endpoint Vercel (chiave nascosta lato server)
   const CHAT_ENDPOINT = "https://pixelup-ai-api.vercel.app/api/chatAI";
 
-  // url param
+  // Parametro template da URL (?tpl=neo-mamme / wedding / cv / fitness …)
   const params = new URLSearchParams(location.search);
   const tpl = params.get('tpl') || 'neo-mamme';
 
-  // chat state
+  // Stato chat
   let history = [];
 
   function appendMsg(text, who='bot'){
@@ -129,10 +129,10 @@
     chatEl.scrollTop = chatEl.scrollHeight;
   }
 
-  // welcome
+  // Messaggio di benvenuto
   appendMsg(`Ciao! Questa è la chat dedicata a **${tpl}**.\nFornisci dettagli concreti e ti risponderò restando nel tema.`);
 
-  // send
+  // Invia messaggio
   $('send').onclick = async ()=>{
     const q = inp.value.trim();
     if(!q) return;
@@ -159,21 +159,23 @@
     }
   };
 
+  // Nuova chat
   $('newChat').onclick = ()=>{
     history = [];
     chatEl.innerHTML='';
     appendMsg(`Nuova chat su **${tpl}**. Dimmi pure!`);
   };
+
+  // Copia ultima risposta
   $('copyLast').onclick = ()=>{
     const msgs = [...chatEl.querySelectorAll('.msg.bot')];
     if(!msgs.length) return;
     navigator.clipboard.writeText(msgs[msgs.length-1].textContent||'');
   };
+
+  // Esporta chat
   $('exportChat').onclick = ()=>{
-    const blob = new Blob(
-      [chatEl.innerText || ''],
-      {type:'text/plain'}
-    );
+    const blob = new Blob([chatEl.innerText || ''], {type:'text/plain'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `pixelup-${tpl}-chat.txt`;
