@@ -1,187 +1,72 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>PixelUp AI – Chat</title>
-<style>
-  :root {
-    --bg:#ffffff; 
-    --card:#f8f9fa; 
-    --muted:#6c757d; 
-    --acc:#007bff; 
-    --txt:#212529;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    background:var(--bg);
-    color:var(--txt);
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
-  }
-  header{
-    padding:16px;
-    border-bottom:1px solid #dee2e6;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-  }
-  h1{font-size:18px;margin:0}
-  .badge{
-    font-size:12px;
-    color:#fff;
-    background:var(--acc);
-    padding:4px 8px;
-    border-radius:999px;
-    margin-left:6px
-  }
-  main{max-width:920px;margin:0 auto;padding:16px}
-  .card{
-    background:var(--card);
-    border:1px solid #dee2e6;
-    border-radius:12px
-  }
-  .chat{height:62vh;overflow:auto;padding:16px}
-  .row{display:flex;gap:8px;margin-top:10px}
-  textarea{
-    flex:1;
-    min-height:56px;
-    max-height:160px;
-    resize:vertical;
-    padding:12px;
-    border-radius:12px;
-    border:1px solid #ced4da;
-    background:#fff;
-    color:var(--txt);
-  }
-  button{
-    border-radius:12px;
-    border:1px solid #ced4da;
-    background:#fff;
-    color:var(--txt);
-    padding:12px 14px;
-    cursor:pointer;
-  }
-  button.primary{
-    background:linear-gradient(90deg,#5bbcff,#6ee7ff);
-    color:#fff;
-    border:none;
-    font-weight:700
-  }
-  .msg{
-    max-width:75%;
-    padding:10px 12px;
-    border-radius:12px;
-    margin:8px 0;
-    white-space:pre-wrap;
-    line-height:1.45
-  }
-  .user{background:#e9ecef;margin-left:auto}
-  .bot{background:#ffffff;border:1px solid #dee2e6}
-  .footer{color:var(--muted);text-align:center;font-size:12px;margin:12px 0}
-</style>
-</head>
-<body>
-<header>
-  <div class="top">
-    <h1>PixelUp AI <span class="badge">Chat</span></h1>
-  </div>
-</header>
+// api/chatAI.js — Vercel Serverless Function (Node runtime)
+// ⛔️ Nessun HTML qui. Chiave OpenAI letta da process.env.OPENAI_API_KEY
 
-<main>
-  <div class="card">
-    <div id="chat" class="chat"></div>
-    <div style="padding:12px;border-top:1px solid #dee2e6">
-      <div class="row">
-        <textarea id="inp" placeholder="Scrivi qui la tua domanda..."></textarea>
-        <button class="primary" id="send">Invia</button>
-      </div>
-      <div class="row">
-        <button id="newChat">Nuova chat</button>
-        <button id="copyLast">Copia ultima risposta</button>
-        <button id="exportChat">Esporta .txt</button>
-      </div>
-    </div>
-  </div>
-  <p class="footer">© PixelUp – Chat IA per template. Powered by OpenAI.</p>
-</main>
+export default async function handler(req, res) {
+  // --- CORS: consenti richieste solo dal tuo sito (allarga a "*" solo per test) ---
+  res.setHeader("Access-Control-Allow-Origin", "https://pixelup.it");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.status(204).end();
 
-<script>
-  const $ = (id)=>document.getElementById(id);
-  const chatEl = $('chat'); 
-  const inp = $('inp');
-
-  // Endpoint Vercel (chiave nascosta lato server)
-  const CHAT_ENDPOINT = "https://pixelup-ai-api.vercel.app/api/chatAI";
-
-  // Parametro template da URL (?tpl=neo-mamme / wedding / cv / fitness …)
-  const params = new URLSearchParams(location.search);
-  const tpl = params.get('tpl') || 'neo-mamme';
-
-  // Stato chat
-  let history = [];
-
-  function appendMsg(text, who='bot'){
-    const div = document.createElement('div');
-    div.className = 'msg ' + (who==='user' ? 'user' : 'bot');
-    div.textContent = text;
-    chatEl.appendChild(div);
-    chatEl.scrollTop = chatEl.scrollHeight;
+  if (req.method !== "POST") {
+    return res.status(405).json({ ok: false, error: "Use POST" });
   }
 
-  // Messaggio di benvenuto
-  appendMsg(`Ciao! Questa è la chat dedicata a **${tpl}**.\nFornisci dettagli concreti e ti risponderò restando nel tema.`);
-
-  // Invia messaggio
-  $('send').onclick = async ()=>{
-    const q = inp.value.trim();
-    if(!q) return;
-    appendMsg(q, 'user');
-    inp.value='';
-
-    appendMsg('⏳ Sto pensando...', 'bot');
-
-    try{
-      const res = await fetch(CHAT_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({
-          tpl,
-          messages: history.concat([{role:'user', content: q}])
-        })
-      });
-      const data = await res.json();
-      const text = data?.output || ('⚠️ Errore: ' + (data?.error || 'sconosciuto'));
-      chatEl.lastChild.textContent = text;
-      history.push({role:'user', content:q}, {role:'assistant', content:text});
-    }catch(e){
-      chatEl.lastChild.textContent = '⚠️ Errore server: ' + e.message;
+  try {
+    const OPENAI_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_KEY) {
+      return res.status(500).json({ ok: false, error: "Missing server API key" });
     }
-  };
 
-  // Nuova chat
-  $('newChat').onclick = ()=>{
-    history = [];
-    chatEl.innerHTML='';
-    appendMsg(`Nuova chat su **${tpl}**. Dimmi pure!`);
-  };
+    const { tpl, messages } = req.body || {};
+    if (!tpl || !Array.isArray(messages)) {
+      return res.status(400).json({ ok: false, error: "Bad payload" });
+    }
 
-  // Copia ultima risposta
-  $('copyLast').onclick = ()=>{
-    const msgs = [...chatEl.querySelectorAll('.msg.bot')];
-    if(!msgs.length) return;
-    navigator.clipboard.writeText(msgs[msgs.length-1].textContent||'');
-  };
+    // ---- Prompt di sistema per template ----
+    const systems = {
+      "neo-mamme": `Sei "PixelUp AI – Neo Mamme", un assistente dedicato a consigli pratici per neo genitori.
+OBIETTIVO: spiegazioni chiare ed empatiche (no diagnosi mediche).
+LIMITI: rifiuta fuori tema o diagnosi; invita a consultare un professionista.
+STILE: italiano semplice, esempi concreti, elenchi quando utile, 120–250 parole.`,
 
-  // Esporta chat
-  $('exportChat').onclick = ()=>{
-    const blob = new Blob([chatEl.innerText || ''], {type:'text/plain'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `pixelup-${tpl}-chat.txt`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-</script>
-</body>
-</html>
+      "wedding": `Sei "PixelUp AI – Wedding Planner". Rispondi solo su organizzazione matrimoni
+(timeline, budget, fornitori, checklist). Stile pratico, passo-passo. Rifiuta fuori tema.`,
+
+      "cv": `Sei "PixelUp AI – CV Assistant". Aiuti solo su CV/lettere: bullet con KPI, ATS friendly,
+riscritture sintetiche. Rifiuta argomenti non HR.`,
+
+      // 👉 facoltativo: attiva anche il template fitness
+      "fitness": `Sei "PixelUp AI – Fitness Coach". Fornisci piani di allenamento e consigli generali
+(non medici). Tono motivazionale, esercizi a corpo libero o in palestra, progressioni settimanali.
+Avvisa di consultare un medico in caso di condizioni particolari.`
+    };
+    const systemPrompt = systems[tpl] || systems["neo-mamme"];
+
+    // ---- Chiamata a OpenAI ----
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "system", content: systemPrompt }].concat(messages),
+        temperature: 0.6
+      })
+    });
+
+    if (!r.ok) {
+      const errText = await r.text().catch(() => "");
+      return res.status(500).json({ ok: false, error: `OpenAI error: ${r.status} ${errText}` });
+    }
+
+    const data = await r.json();
+    const text = data?.choices?.[0]?.message?.content?.trim() || "Nessuna risposta.";
+    return res.status(200).json({ ok: true, output: text });
+
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+}
